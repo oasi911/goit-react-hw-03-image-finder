@@ -10,7 +10,6 @@ import { Modal } from './Modal/Modal';
 
 export class App extends Component {
   state = {
-    API_KEY: '34881705-1e85e8c708a083119a0406cc9',
     images: [],
     per_page: 12,
     currentPage: 1,
@@ -25,6 +24,10 @@ export class App extends Component {
   };
 
   componentDidUpdate(prevProps, prevState) {
+    if (prevProps.query !== this.props.query) {
+      this.setState({ images: [], currentPage: 1 }, this.fetchNextPage);
+    }
+
     if (prevState.currentPage !== this.state.currentPage) {
       this.fetchNextPage();
     }
@@ -39,20 +42,19 @@ export class App extends Component {
       query: inputValue,
       currentPage: 1,
       loading: true,
+      images: [],
     });
 
     try {
       const fetchData = await getImages({
-        API_KEY: this.state.API_KEY,
         per_page: this.state.per_page,
         currentPage: 1,
         query: inputValue,
       });
-
       this.setState(
         prevState => {
           return {
-            images: [...fetchData.data.hits],
+            images: fetchData.data.hits.slice(0, this.state.per_page),
           };
         },
         () => {
@@ -78,6 +80,8 @@ export class App extends Component {
   };
 
   async fetchNextPage() {
+    this.setState({ loading: true });
+
     try {
       const fetchData = await getImages({
         API_KEY: this.state.API_KEY,
