@@ -1,13 +1,22 @@
 import PropTypes from 'prop-types';
 
-export const ImageGalleryItem = ({ image }) => {
+export const ImageGalleryItem = ({
+  webformatURL,
+  tags,
+  largeImageURL,
+  handleModalOpen,
+}) => {
+  const handleClick = () => {
+    handleModalOpen(largeImageURL, tags);
+  };
+
   return (
-    <li className="ImageGalleryItem" onClick={image.handleModalOpen}>
+    <li className="ImageGalleryItem" onClick={handleClick}>
       <img
         className="ImageGalleryItem-image"
-        src={image.webformatURL}
-        alt={image.tags}
-        data-large={image.largeImageURL}
+        src={webformatURL}
+        alt={tags}
+        data-large={largeImageURL}
       />
     </li>
   );
@@ -18,5 +27,6 @@ ImageGalleryItem.propTypes = {
     webformatURL: PropTypes.string.isRequired,
     tags: PropTypes.string.isRequired,
     largeImageURL: PropTypes.string.isRequired,
+    handleModalOpen: PropTypes.func.isRequired,
   }),
 };

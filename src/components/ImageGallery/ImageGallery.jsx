@@ -8,7 +8,10 @@ export const ImageGallery = ({ images, handleModalOpen }) => {
         return (
           <ImageGalleryItem
             key={id}
-            image={{ webformatURL, tags, largeImageURL, handleModalOpen }}
+            webformatURL={webformatURL}
+            tags={tags}
+            largeImageURL={largeImageURL}
+            handleModalOpen={handleModalOpen}
           />
         );
       })}

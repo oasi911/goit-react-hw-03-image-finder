@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { getImages } from 'utils/api';
 import 'react-toastify/dist/ReactToastify.css';
 import { toast, ToastContainer } from 'react-toastify';
 import { Component } from 'react';
@@ -24,14 +24,84 @@ export class App extends Component {
     },
   };
 
-  async getImages() {
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.currentPage !== this.state.currentPage) {
+      this.fetchNextPage();
+    }
+  }
+
+  onSubmit = async ev => {
+    ev.preventDefault();
+
+    const inputValue = ev.currentTarget.elements.search.value;
+
+    this.setState({
+      query: inputValue,
+      currentPage: 1,
+      loading: true,
+    });
+
     try {
-      const { API_KEY, per_page, currentPage, query } = this.state;
-      this.setState({ loading: true });
-      const response = await axios.get(
-        `https://pixabay.com/api/?q=${query}&page=${currentPage}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=${per_page}`
+      const fetchData = await getImages({
+        API_KEY: this.state.API_KEY,
+        per_page: this.state.per_page,
+        currentPage: 1,
+        query: inputValue,
+      });
+
+      this.setState(
+        prevState => {
+          return {
+            images: [...fetchData.data.hits],
+          };
+        },
+        () => {
+          if (fetchData.data.hits.length === 0) {
+            this.setState({ isLoadMorePresent: false });
+            toast.warning("Sorry, there's no images found!");
+          } else if (
+            fetchData.data.hits.length < this.state.per_page ||
+            fetchData.data.totalHits <= this.state.per_page
+          ) {
+            this.setState({ isLoadMorePresent: false });
+            toast.warning("You've reached the end of search results!");
+          } else {
+            this.setState({ isLoadMorePresent: true });
+          }
+        }
       );
-      return response;
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
+  async fetchNextPage() {
+    try {
+      const fetchData = await getImages({
+        API_KEY: this.state.API_KEY,
+        per_page: this.state.per_page,
+        currentPage: this.state.currentPage,
+        query: this.state.query,
+      });
+
+      this.setState(
+        prevState => {
+          return {
+            images: [...prevState.images, ...fetchData.data.hits],
+          };
+        },
+        () => {
+          if (
+            fetchData.data.hits.length < this.state.per_page ||
+            fetchData.data.totalHits <= this.state.per_page
+          ) {
+            this.setState({ isLoadMorePresent: false });
+            toast.warning("You've reached the end of search results!");
+          }
+        }
+      );
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -39,77 +109,19 @@ export class App extends Component {
     }
   }
 
-  onSubmit = ev => {
-    ev.preventDefault();
-
-    const inputValue = ev.currentTarget.elements.search.value;
-
-    this.setState(
-      { query: inputValue, images: [], currentPage: 1 },
-      async () => {
-        const fetchData = await this.getImages();
-
-        this.setState(
-          prevState => {
-            return {
-              images: [...prevState.images, ...fetchData.data.hits],
-            };
-          },
-          () => {
-            if (fetchData.data.hits.length === 0) {
-              this.setState({ isLoadMorePresent: false });
-              toast.warning("Sorry, there's no images found!");
-            } else if (
-              fetchData.data.hits.length < this.state.per_page ||
-              fetchData.data.totalHits <= this.state.per_page
-            ) {
-              this.setState({ isLoadMorePresent: false });
-              toast.warning("You've reached the end of search results!");
-            } else {
-              this.setState({ isLoadMorePresent: true });
-            }
-          }
-        );
-      }
-    );
-  };
-
   handleLoadMoreBtnClick = () => {
-    this.setState(
-      prevState => {
-        return { currentPage: prevState.currentPage + 1 };
-      },
-      async () => {
-        const fetchData = await this.getImages();
-
-        this.setState(
-          prevState => {
-            return {
-              images: [...prevState.images, ...fetchData.data.hits],
-            };
-          },
-          () => {
-            if (
-              fetchData.data.hits.length < this.state.per_page ||
-              fetchData.data.totalHits <= this.state.per_page
-            ) {
-              this.setState({ isLoadMorePresent: false });
-              toast.warning("You've reached the end of search results!");
-            }
-          }
-        );
-      }
-    );
+    this.setState(prevState => {
+      return { currentPage: prevState.currentPage + 1 };
+    });
   };
 
-  handleModalOpen = ev => {
-    this.setState({ isModalShown: true }, () => {
-      this.setState({
-        currentModalImg: {
-          largeImageURL: ev.target.getAttribute('data-large'),
-          alt: ev.target.getAttribute('alt'),
-        },
-      });
+  handleModalOpen = (largeImageURL, tags) => {
+    this.setState({
+      isModalShown: true,
+      currentModalImg: {
+        largeImageURL: largeImageURL,
+        alt: tags,
+      },
     });
   };
 
