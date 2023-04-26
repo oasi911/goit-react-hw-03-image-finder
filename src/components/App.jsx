@@ -24,16 +24,38 @@ export class App extends Component {
   };
 
   componentDidUpdate(prevProps, prevState) {
-    if (prevProps.query !== this.props.query) {
-      this.setState({ images: [], currentPage: 1 }, this.fetchNextPage);
-    }
-
-    if (prevState.currentPage !== this.state.currentPage) {
+    if (
+      prevState.query !== this.state.query ||
+      prevState.currentPage !== this.state.currentPage
+    ) {
       this.fetchNextPage();
     }
   }
 
-  onSubmit = async ev => {
+  fetchNextPage = async () => {
+    this.setState({ loading: true });
+
+    try {
+      const fetchData = await getImages({
+        per_page: this.state.per_page,
+        currentPage: this.state.currentPage,
+        query: this.state.query,
+      });
+
+      this.setState(prevState => {
+        return {
+          images: [...prevState.images, ...fetchData.data.hits],
+          isLoadMorePresent: fetchData.data.hits.length === prevState.per_page,
+        };
+      });
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
+  onSubmit = ev => {
     ev.preventDefault();
 
     const inputValue = ev.currentTarget.elements.search.value;
@@ -43,75 +65,9 @@ export class App extends Component {
       currentPage: 1,
       loading: true,
       images: [],
+      isLoadMorePresent: false,
     });
-
-    try {
-      const fetchData = await getImages({
-        per_page: this.state.per_page,
-        currentPage: 1,
-        query: inputValue,
-      });
-      this.setState(
-        prevState => {
-          return {
-            images: fetchData.data.hits.slice(0, this.state.per_page),
-          };
-        },
-        () => {
-          if (fetchData.data.hits.length === 0) {
-            this.setState({ isLoadMorePresent: false });
-            toast.warning("Sorry, there's no images found!");
-          } else if (
-            fetchData.data.hits.length < this.state.per_page ||
-            fetchData.data.totalHits <= this.state.per_page
-          ) {
-            this.setState({ isLoadMorePresent: false });
-            toast.warning("You've reached the end of search results!");
-          } else {
-            this.setState({ isLoadMorePresent: true });
-          }
-        }
-      );
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      this.setState({ loading: false });
-    }
   };
-
-  async fetchNextPage() {
-    this.setState({ loading: true });
-
-    try {
-      const fetchData = await getImages({
-        API_KEY: this.state.API_KEY,
-        per_page: this.state.per_page,
-        currentPage: this.state.currentPage,
-        query: this.state.query,
-      });
-
-      this.setState(
-        prevState => {
-          return {
-            images: [...prevState.images, ...fetchData.data.hits],
-          };
-        },
-        () => {
-          if (
-            fetchData.data.hits.length < this.state.per_page ||
-            fetchData.data.totalHits <= this.state.per_page
-          ) {
-            this.setState({ isLoadMorePresent: false });
-            toast.warning("You've reached the end of search results!");
-          }
-        }
-      );
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      this.setState({ loading: false });
-    }
-  }
 
   handleLoadMoreBtnClick = () => {
     this.setState(prevState => {
@@ -148,7 +104,7 @@ export class App extends Component {
         <Searchbar onSubmit={this.onSubmit} />
         <ImageGallery images={images} handleModalOpen={this.handleModalOpen} />
         {loading && <Loader />}
-        {!loading && isLoadMorePresent && (
+        {isLoadMorePresent && (
           <Button handleLoadMoreBtnClick={this.handleLoadMoreBtnClick} />
         )}
         {isModalShown && (
